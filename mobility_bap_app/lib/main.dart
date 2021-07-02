@@ -50,8 +50,8 @@ class MyApp extends StatelessWidget {
           accentColor: Color(0xFFf2f2f2),
         ),
         // home: AuthWrapper(),
-        home:serachForMap(),
-        //AuthScreen(),
+        home:MyMap(),
+        //AuthScreen(),s
         routes: {
           OnBoarding.routeName: (ctx) => OnBoarding(),
           SetupGpsLocationScreen.routeName: (ctx) => SetupGpsLocationScreen(),
