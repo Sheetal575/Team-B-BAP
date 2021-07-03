@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mobility_bap_app/screens/map.dart';
-import 'package:mobility_bap_app/screens/search.dart';
+import 'package:mobility_bap_app/screens/search_screen.dart';
+import 'package:mobility_bap_app/search/search_bloc.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mobility_bap_app/models/token.dart';
@@ -18,14 +18,11 @@ import 'package:mobility_bap_app/screens/setup_gps_location_screen.dart';
 import 'package:mobility_bap_app/services/auth.dart';
 import 'package:mobility_bap_app/services/auth_logic.dart';
 
-import 'package:mobility_bap_app/wrapper.dart';
-
 void main() {
   runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -39,7 +36,8 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (ctx) => AuthService(),
-        )
+        ),
+        ChangeNotifierProvider(create: (ctx) => ApplicationBloc()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -50,7 +48,8 @@ class MyApp extends StatelessWidget {
           accentColor: Color(0xFFf2f2f2),
         ),
         // home: AuthWrapper(),
-        home:serachForMap(),
+        home: HomeScreen(),
+
         //AuthScreen(),
         routes: {
           OnBoarding.routeName: (ctx) => OnBoarding(),
@@ -65,5 +64,13 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+
+    // return ChangeNotifierProvider(
+    //   create: (context) => ApplicationBloc(),
+    //   child: MaterialApp(
+    //     title: 'Flutter Demo',
+    //     home: HomeScreen(),
+    //   ),
+    // );
   }
 }

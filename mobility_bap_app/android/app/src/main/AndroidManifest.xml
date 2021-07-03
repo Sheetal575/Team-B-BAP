@@ -7,7 +7,7 @@
         android:label="mobility_bap_app"
         android:icon="@mipmap/ic_launcher">
            <meta-data android:name="com.google.android.geo.API_KEY"
-               android:value="AIzaSyChUalbolsCwsV_Rg93cbscl6hpvQbWsOA"/>
+               android:value="AIzaSyBrN9CFIe6qFV5jopUma8eWvQGgQed3t5g"/>
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"

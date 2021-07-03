@@ -1,33 +1,22 @@
-
-import 'package:geocoder/geocoder.dart';
 import 'package:geolocator/geolocator.dart';
-// import 'package:google_maps_webservice/places.dart';
-// import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
-// import 'package:flutter_maps/secrets.dart'; // Stores the Google Maps API Key
-// import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-
-// const kGoogleApiKey = "AIzaSyChUalbolsCwsV_Rg93cbscl6hpvQbWsOA";
-// GoogleMapsPlaces _places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
-
 class MyMap extends StatefulWidget {
-  const MyMap({ Key? key }) : super(key: key);
+  const MyMap({Key? key}) : super(key: key);
 
   @override
   _MyMapState createState() => _MyMapState();
 }
 
 class _MyMapState extends State<MyMap> {
-
   late GoogleMapController mapController;
-  CameraPosition _initialLocation = CameraPosition(target: LatLng(0,0),zoom: 14.0,);
+  late CameraPosition _initialLocation = CameraPosition(target: LatLng(0, 0));
   // static const LatLng _center = const LatLng(45.521345, -122.687);
   // LatLng _lastMapPosition = _center;
   late Position _currentPosition;
- String _currentAddress = '';
+  String _currentAddress = '';
 
   final startAddressController = TextEditingController();
   final destinationAddressController = TextEditingController();
@@ -37,132 +26,168 @@ class _MyMapState extends State<MyMap> {
 
   String _startAddress = '';
   String _destinationAddress = '';
-  String? _placeDistance;
+  // String? _placeDistance;
 // List of coordinates to join
-List<LatLng> polylineCoordinates = [];
+  List<LatLng> polylineCoordinates = [];
 
 // Map storing polylines created by connecting two points
-Map<PolylineId, Polyline> polylines = {};
+  Map<PolylineId, Polyline> polylines = {};
   Set<Marker> markers = {};
 
+  //Positions for storing start and destination
+  late LatLng _startPosition;
+  late LatLng _destinationPosition;
 
- // Method for retrieving the current location
+  // Start Location Marker
+  Marker startMarker = Marker(
+    markerId: MarkerId('startMarker'),
+    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+  );
+
+  // Destination Location Marker
+  Marker destinationMarker = Marker(
+    markerId: MarkerId('destinationMarker'),
+    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+  );
+
+  // Method for retrieving the current location
   _getCurrentLocation() async {
     await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
         .then((Position position) async {
-      setState(() {
-        _currentPosition = position;
-        print('CURRENT POS: $_currentPosition');
-         // Start Location Marker
-        Marker currentLocationMarker = Marker(
-          markerId: MarkerId('currentLocationMarker'),
-          position: LatLng(position.latitude, position.longitude),
-          infoWindow: InfoWindow(
-            title: 'Current Location',
-            // snippet: _startAddress,
-          ),
-          icon: BitmapDescriptor.defaultMarker,
-        );
-        markers.add(currentLocationMarker);
-        mapController.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(position.latitude, position.longitude),
-              zoom: 18.0,
-            ),
-          ),
-        );
-      });
-      await _getAddress();
+      _currentPosition = position;
+      setMarkerAndGetAddress(
+          LatLng(position.latitude, position.longitude), startMarker);
     }).catchError((e) {
       print(e);
     });
+  }
 
+  //Once a marker position is modified, the address and latLng values are updated
+  updateLocation(String _markerId, LatLng _latLng, String _address) {
+    setState(() {
+      if (_markerId == 'startMarker') {
+        _startPosition = _latLng;
+        _startAddress = _address;
+      } else if (_markerId == 'destinationMarker') {
+        _destinationAddress = _address;
+        _destinationPosition = _latLng;
+      }
+    });
+  }
 
+  setMarkerAndGetAddress(LatLng _latLng, Marker marker) {
+    print('CURRENT $_latLng');
+    print('markerId ${marker.markerId}');
+    // Start Location Marker
+    marker = marker.copyWith(
+        positionParam: LatLng(_latLng.latitude, _latLng.longitude),
+        infoWindowParam: InfoWindow(
+          title: marker.markerId == 'startMarker'
+              ? 'PickUp point'
+              : 'DropOff point',
+          // snippet: _startAddress,
+        ),
+        draggableParam: true,
+        onTapParam: () {
+          print(_latLng);
+        },
+        onDragEndParam: ((_newPosition) {
+          print('${_newPosition.latitude} + ${_newPosition.longitude}');
+          _getAddress(LatLng(_newPosition.latitude, _newPosition.longitude))
+              .then((_address) {
+            print(_address);
+            updateLocation(marker.markerId.value, _newPosition, _address);
+          });
+        }));
+    setState(() {
+      _getAddress(LatLng(_latLng.latitude, _latLng.longitude)).then((_address) {
+        print(_address);
+        updateLocation(marker.markerId.value,
+            LatLng(_latLng.latitude, _latLng.longitude), _address);
+      });
+      markers.add(marker);
+      mapController.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(_latLng.latitude, _latLng.longitude),
+            zoom: 18.0,
+          ),
+        ),
+      );
+    });
   }
 
   // Method for retrieving the address
-  _getAddress() async {
+  Future<String> _getAddress(LatLng latLng) async {
     try {
-      List<Placemark> p = await placemarkFromCoordinates(
-          _currentPosition.latitude, _currentPosition.longitude);
-
+      List<Placemark> p =
+          await placemarkFromCoordinates(latLng.latitude, latLng.longitude);
       Placemark place = p[0];
-
-      setState(() {
-        _currentAddress =
-            "${place.name}, ${place.locality}, ${place.postalCode}, ${place.country}";
-        startAddressController.text = _currentAddress;
-        _startAddress = _currentAddress;
-
-      });
+      return "${place.name}, ${place.street}, ${place.locality}";
     } catch (e) {
       print(e);
+      return 'error';
     }
   }
 
-
-
   @override
-    void initState() {
+  void initState() {
     super.initState();
-       _getCurrentLocation();
   }
 
-
-
-   //text field widget
-    Widget _textField({
-        required TextEditingController controller,
-        required FocusNode focusNode,
-        required String label,
-        required String hint,
-        required double width,
-        required Icon prefixIcon,
-        Widget? suffixIcon,
-        required Function(String) locationCallback,
-      }) {
-        return Container(
-          width: MediaQuery.of(context).size.width ,
-          child: TextField(
-            onChanged: (value) {
-              locationCallback(value);
-            },
-            controller: controller,
-            focusNode: focusNode,
-            decoration: new InputDecoration(
-              prefixIcon: prefixIcon,
-              suffixIcon: suffixIcon,
-              labelText: label,
-              filled: true,
-              fillColor: Colors.white,
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(10.0),
-                ),
-                borderSide: BorderSide(
-                  color: Colors.grey.shade400,
-                  width: 2,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.all(
-                  Radius.circular(10.0),
-                ),
-                borderSide: BorderSide(
-                  color: Colors.blue.shade300,
-                  width: 2,
-                ),
-              ),
-              contentPadding: EdgeInsets.all(15),
-              hintText: hint,
+  //text field widget
+  Widget _textField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required String hint,
+    required double width,
+    required Icon prefixIcon,
+    Widget? suffixIcon,
+    required Function(String) locationCallback,
+  }) {
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      child: TextField(
+        onChanged: (value) {
+          locationCallback(value);
+        },
+        controller: controller,
+        focusNode: focusNode,
+        decoration: new InputDecoration(
+          prefixIcon: prefixIcon,
+          suffixIcon: suffixIcon,
+          labelText: label,
+          filled: true,
+          fillColor: Colors.white,
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(10.0),
+            ),
+            borderSide: BorderSide(
+              color: Colors.grey.shade400,
+              width: 2,
             ),
           ),
-        );
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.all(
+              Radius.circular(10.0),
+            ),
+            borderSide: BorderSide(
+              color: Colors.blue.shade300,
+              width: 2,
+            ),
+          ),
+          contentPadding: EdgeInsets.all(15),
+          hintText: hint,
+        ),
+      ),
+    );
   }
- 
+
   @override
   Widget build(BuildContext context) {
+    print('start: $_startAddress dropoff: $_destinationAddress');
     var height = MediaQuery.of(context).size.height;
     var width = MediaQuery.of(context).size.width;
     return Container(
@@ -175,6 +200,9 @@ Map<PolylineId, Polyline> polylines = {};
             // Map View
 
             GoogleMap(
+              onLongPress: (_latLng) {
+                setMarkerAndGetAddress(_latLng, destinationMarker);
+              },
               markers: Set<Marker>.from(markers),
               initialCameraPosition: _initialLocation,
               myLocationEnabled: false,
@@ -185,6 +213,7 @@ Map<PolylineId, Polyline> polylines = {};
               // polylines: Set<Polyline>.of(polylines.values),
               onMapCreated: (GoogleMapController controller) {
                 mapController = controller;
+                _getCurrentLocation();
               },
             ),
             // Show zoom buttons
@@ -373,8 +402,4 @@ Map<PolylineId, Polyline> polylines = {};
       ),
     );
   }
-
 }
-
-
- 

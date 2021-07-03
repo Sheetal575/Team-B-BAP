@@ -1,10 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mobility_bap_app/screens/map.dart';
-import 'package:google_maps_webservice/places.dart';
+
 class Dropoff extends StatefulWidget {
   static const routeName = '/dropoff-screen';
 
@@ -15,10 +14,10 @@ class Dropoff extends StatefulWidget {
 }
 
 class _DropoffState extends State<Dropoff> {
-  final _locationContoller = TextEditingController(text: "Model Engineering College");
-   late GoogleMapController mapController;
-   static const kGoogleApiKey = "AIzaSyBrN9CFIe6qFV5jopUma8eWvQGgQed3t5g";
-   GoogleMapsPlaces _places = GoogleMapsPlaces(apiKey: kGoogleApiKey);
+  final _locationContoller =
+      TextEditingController(text: "Model Engineering College");
+  late GoogleMapController mapController;
+  static const kGoogleApiKey = "AIzaSyBrN9CFIe6qFV5jopUma8eWvQGgQed3t5g";
   static const images = [
     {'SUV': 'assets/images/suv.png'},
     {'Hatchback': 'assets/images/hatchback.png'},
@@ -125,7 +124,6 @@ class _DropoffState extends State<Dropoff> {
 
   @override
   Widget build(BuildContext context) {
-    List<PlacesSearchResult> places = [];
     int i = 0;
 
     String rating = '4.9';
@@ -144,7 +142,9 @@ class _DropoffState extends State<Dropoff> {
             // Pin(pinPos: pinPos),
             // Loc(locPos: locPos),
             if (!this._applied) ...[
-              SearchBar(locationContoller: _locationContoller,),
+              SearchBar(
+                locationContoller: _locationContoller,
+              ),
               GPSbutton(),
               buildApplyButton(context)
             ] else ...[
@@ -1543,4 +1543,3 @@ class Map extends StatelessWidget {
     );
   }
 }
- 

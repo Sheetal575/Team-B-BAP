@@ -1,15 +1,70 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:mobility_bap_app/screens/dropoff.dart';
 import 'package:mobility_bap_app/screens/map.dart';
+import 'package:mobility_bap_app/search/models/place.dart';
+import 'package:mobility_bap_app/search/search_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../widgets/app_drawer.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   static const routeName = '/home-screen';
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  StreamSubscription? locationSubscription;
+  StreamSubscription? boundsSubscription;
+
+  final _destinationController = TextEditingController();
+
+  @override
+  void initState() {
+    final applicationBloc =
+        Provider.of<ApplicationBloc>(context, listen: false);
+
+    //Listen for selected Location
+    locationSubscription =
+        applicationBloc.selectedLocation!.stream.listen((Place? place) {
+      if (place != null) {
+        _destinationController.text = place.name ?? '';
+        // _goToPlace(place);
+      } else
+        _destinationController.text = "";
+    });
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    final applicationBloc =
+        Provider.of<ApplicationBloc>(context, listen: false);
+    applicationBloc.dispose();
+    _destinationController.dispose();
+    locationSubscription!.cancel();
+    boundsSubscription!.cancel();
+    super.dispose();
+  }
+
+  // Future<void> _goToPlace(Place place) async {
+  //   final GoogleMapController controller = await _mapController.future;
+  //   controller.animateCamera(
+  //     CameraUpdate.newCameraPosition(
+  //       CameraPosition(
+  //           target: LatLng(
+  //               place.geometry!.location!.lat!, place.geometry!.location!.lng!),
+  //           zoom: 14.0),
+  //     ),
+  //   );
+
+  @override
   Widget build(BuildContext context) {
+    final applicationBloc = Provider.of<ApplicationBloc>(context);
     return Scaffold(
       drawer: AppDrawer(),
       drawerEnableOpenDragGesture: false,
@@ -18,7 +73,6 @@ class HomeScreen extends StatelessWidget {
           Container(
             height: double.infinity,
             width: double.infinity,
-      
             child: MyMap(),
           ),
           Padding(
@@ -38,11 +92,10 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          
           Positioned(
             bottom: 0,
             child: Container(
-              height: MediaQuery.of(context).size.height -150 ,
+              height: MediaQuery.of(context).size.height - 150,
               width: MediaQuery.of(context).size.width,
               child: DraggableScrollableSheet(
                 minChildSize: 0.5,
@@ -235,18 +288,39 @@ class HomeScreen extends StatelessWidget {
                                                                           .size
                                                                           .width -
                                                                       170,
-                                                                  child: Text(
-                                                                    "Model Engineering College",
-                                                                    style:
-                                                                        TextStyle(
-                                                                      fontFamily:
-                                                                          'Lato',
-                                                                      fontSize:
-                                                                          17,
-                                                                      color: Color(
-                                                                          0xff242e42),
+                                                                  height: 30,
+                                                                  child:
+                                                                      TextField(
+                                                                    controller:
+                                                                        _destinationController,
+                                                                    textCapitalization:
+                                                                        TextCapitalization
+                                                                            .words,
+                                                                    decoration:
+                                                                        InputDecoration(
+                                                                      hintText:
+                                                                          'Search by City',
+                                                                      suffixIcon:
+                                                                          Icon(Icons
+                                                                              .search),
                                                                     ),
+                                                                    onChanged: (value) =>
+                                                                        applicationBloc
+                                                                            .searchPlaces(value),
+                                                                    // onTap: () => applicationBloc.clearSelectedLocation(),
                                                                   ),
+                                                                  // Text(
+                                                                  //   "Model Engineering College",
+                                                                  //   style:
+                                                                  //       TextStyle(
+                                                                  //     fontFamily:
+                                                                  //         'Lato',
+                                                                  //     fontSize:
+                                                                  //         17,
+                                                                  //     color: Color(
+                                                                  //         0xff242e42),
+                                                                  //   ),
+                                                                  // ),
                                                                 ),
                                                                 Expanded(
                                                                   child:
@@ -348,7 +422,8 @@ class HomeScreen extends StatelessWidget {
                               width: MediaQuery.of(context).size.width,
                               child: ListView.builder(
                                 padding: EdgeInsets.zero,
-                                itemCount: 15,
+                                itemCount:
+                                    applicationBloc.searchResults?.length,
                                 //controller: controller,
                                 itemBuilder: (BuildContext context, index) {
                                   return Container(
@@ -379,13 +454,20 @@ class HomeScreen extends StatelessWidget {
                                                   MainAxisAlignment
                                                       .spaceBetween,
                                               children: [
-                                                Text(
-                                                  "Viya Constructions",
-                                                  style: TextStyle(
-                                                      fontFamily: 'Lato',
-                                                      fontSize: 17,
-                                                      fontWeight:
-                                                          FontWeight.w400),
+                                                Flexible(
+                                                  flex: 1,
+                                                  child: Text(
+                                                    applicationBloc
+                                                        .searchResults![index]
+                                                        .description!,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                        fontFamily: 'Lato',
+                                                        fontSize: 17,
+                                                        fontWeight:
+                                                            FontWeight.w400),
+                                                  ),
                                                 ),
                                                 IconButton(
                                                   onPressed: () {},
