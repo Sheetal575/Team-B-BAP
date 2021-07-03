@@ -1,4 +1,5 @@
 
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoder/geocoder.dart';
 import 'package:geolocator/geolocator.dart';
 // import 'package:google_maps_webservice/places.dart';
@@ -33,18 +34,30 @@ class _MyMapState extends State<MyMap> {
   final destinationAddressController = TextEditingController();
 
   final startAddressFocusNode = FocusNode();
-  final desrinationAddressFocusNode = FocusNode();
-  late BitmapDescriptor startCustomIcon;     
+  final desrinationAddressFocusNode = FocusNode();    
   String _startAddress = '';
   String _destinationAddress = '';
   String? _placeDistance;
-// List of coordinates to join
-List<LatLng> polylineCoordinates = [];
-
-// Map storing polylines created by connecting two points
-Map<PolylineId, Polyline> polylines = {};
+  // List of coordinates to join
+  late BitmapDescriptor icon;
+  // Map storing polylines created by connecting two points
   Set<Marker> markers = {};
+  late PolylinePoints polylinePoints;
+  List<LatLng> polylineCoordinates = [];
+  // Map storing polylines created by connecting two points
+  Map<PolylineId, Polyline> polylines = {};
 
+
+
+// Images for maker of current location
+  getIcons() async {
+    var icon = await BitmapDescriptor.fromAssetImage(
+        ImageConfiguration(devicePixelRatio: 3.2),
+        "assets/images/current_loc.png");
+    setState(() {
+      this.icon = icon;
+    });
+  }
 
  // Method for retrieving the current location
   _getCurrentLocation() async {
@@ -53,17 +66,19 @@ Map<PolylineId, Polyline> polylines = {};
       setState(() {
         _currentPosition = position;
         print('CURRENT POS: $_currentPosition');
-         // Start Location Marker
-        // Marker currentLocationMarker = Marker(
-        //   markerId: MarkerId('currentLocationMarker'),
-        //   position: LatLng(position.latitude, position.longitude),
-        //   infoWindow: InfoWindow(
-        //     title: 'Current Location',
-        //     // snippet: _startAddress,
-        //   ),
-        //   icon: BitmapDescriptor.defaultMarker,
-        // );
-        // markers.add(currentLocationMarker);
+        //  Start Location Marker
+        Marker currentLocationMarker = Marker(
+        
+        markerId: MarkerId('startCoordinatesString'),
+        position: LatLng(position.latitude, position.longitude),
+        infoWindow: InfoWindow(
+          title: 'Start Current',
+          snippet: _startAddress,
+        ),
+        icon:  icon,
+      );
+        markers.add(currentLocationMarker);
+
         mapController.animateCamera(
           CameraUpdate.newCameraPosition(
             CameraPosition(
@@ -101,12 +116,8 @@ Map<PolylineId, Polyline> polylines = {};
     }
   }
 
-  //to add custom marker
-  void setCustomMarker() async {
-    startCustomIcon = await BitmapDescriptor.fromAssetImage(
-        ImageConfiguration(devicePixelRatio: 2.5), 'assets/images/current_loc.png');
-  }
  
+ //this is to show maker of start and destionation address and their coordinates
 _calculateDistance() async {
    List<Location> startPlacemark = await locationFromAddress(_startAddress);
     List<Location> destinationPlacemark = await locationFromAddress(_destinationAddress);
@@ -124,7 +135,8 @@ double startLatitude = _startAddress == _currentAddress
       String startCoordinatesString = '($startLatitude, $startLongitude)';
       String destinationCoordinatesString =
           '($destinationLatitude, $destinationLongitude)';
-          
+            await _createPolylines(startLatitude, startLongitude, destinationLatitude,
+          destinationLongitude);
        setState(() {
          
         
@@ -163,11 +175,63 @@ double startLatitude = _startAddress == _currentAddress
 }
 
 
+// Create the polylines for showing the route between two places
+_createPolylines(
+  double startLatitude,
+  double startLongitude,
+  double destinationLatitude,
+  double destinationLongitude,
+) async {
+  polylineCoordinates.clear(); 
+  print(" route");
+  print(startLatitude);
+  // Initializing PolylinePoints
+  polylinePoints = PolylinePoints();
+
+  // Generating the list of coordinates to be used for
+  // drawing the polylines
+  PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+    "AIzaSyBrN9CFIe6qFV5jopUma8eWvQGgQed3t5g", // Google Maps API Key
+    PointLatLng(startLatitude, startLongitude),
+    PointLatLng(destinationLatitude, destinationLongitude),
+    travelMode: TravelMode.driving,
+  );
+
+  // Adding the coordinates to the list
+  if (result.points.isNotEmpty) {
+    result.points.forEach((PointLatLng point) {
+      polylineCoordinates.add(LatLng(point.latitude, point.longitude));
+    });
+  }
+  
+ print(polylineCoordinates);
+  // Defining an ID
+  PolylineId id = PolylineId('poly');
+
+  // Initializing Polyline
+  Polyline polyline = Polyline(
+    polylineId: id,
+    color: Colors.red,
+    points: polylineCoordinates,
+    width: 3,
+  );
+
+  // Adding the polyline to the map
+  polylines[id] = polyline;
+  
+}
+      
+
+      
+
+
+
   @override
     void initState() {
     super.initState();
        _getCurrentLocation();
-       setCustomMarker();
+         getIcons();
+         
   }
 
 
@@ -243,7 +307,7 @@ double startLatitude = _startAddress == _currentAddress
               mapType: MapType.normal,
               zoomGesturesEnabled: true,
               zoomControlsEnabled: false,
-              // polylines: Set<Polyline>.of(polylines.values),
+              polylines: Set<Polyline>.of(polylines.values),
               onMapCreated: (GoogleMapController controller) {
                 mapController = controller;
               },
@@ -337,8 +401,9 @@ double startLatitude = _startAddress == _currentAddress
                               focusNode: startAddressFocusNode,
                               width: width,
                               locationCallback: (String value) {
+                                 
                                 setState(() {
-                                  _calculateDistance();
+                                 _calculateDistance();
                                   _startAddress = value;
                                 });
                               }),
@@ -351,6 +416,7 @@ double startLatitude = _startAddress == _currentAddress
                               focusNode: desrinationAddressFocusNode,
                               width: width,
                               locationCallback: (String value) {
+                               
                                 setState(() {
                                   _calculateDistance();
                                   _destinationAddress = value;
@@ -371,11 +437,11 @@ double startLatitude = _startAddress == _currentAddress
                           ElevatedButton(
                             onPressed: (){
                               
-                              setState(() {
-                                    _startAddress = startAddressController.text;
-                                    print(_startAddress);
-                                    print(_destinationAddress);
-                                  });
+                              // setState(() {
+                              //       _startAddress = startAddressController.text;
+                              //       print(_startAddress);
+                              //       print(_destinationAddress);
+                              //     });
                               },
                             child: Padding(
                               padding: const EdgeInsets.all(8.0),
