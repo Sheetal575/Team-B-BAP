@@ -24,6 +24,7 @@ class ApplicationBloc with ChangeNotifier {
   String? placeType;
   List<Place>? placeResults;
   List<Marker>? markers = [];
+  String pickupDropoff = '';
 
   ApplicationBloc() {
     setCurrentLocation();
@@ -41,8 +42,9 @@ class ApplicationBloc with ChangeNotifier {
     notifyListeners();
   }
 
-  searchPlaces(String searchTerm) async {
+  searchPlaces(String searchTerm, String _pickupDropoff) async {
     searchResults = await placesService.getAutocomplete(searchTerm);
+    pickupDropoff = _pickupDropoff;
     notifyListeners();
   }
 

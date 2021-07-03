@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobility_bap_app/screens/search_screen.dart';
 import 'package:mobility_bap_app/search/search_bloc.dart';
+import 'package:mobility_bap_app/services/location_providers.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mobility_bap_app/models/token.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
           create: (ctx) => AuthService(),
         ),
         ChangeNotifierProvider(create: (ctx) => ApplicationBloc()),
+        ChangeNotifierProvider(create: (ctx) => LocationData()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

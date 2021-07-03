@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mobility_bap_app/screens/dropoff.dart';
 import 'package:mobility_bap_app/screens/map.dart';
 import 'package:mobility_bap_app/search/models/place.dart';
 import 'package:mobility_bap_app/search/search_bloc.dart';
+import 'package:mobility_bap_app/services/location_providers.dart';
 import 'package:provider/provider.dart';
 
 import '../widgets/app_drawer.dart';
@@ -20,8 +22,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription? locationSubscription;
   StreamSubscription? boundsSubscription;
+  MyMap myMap = MyMap();
 
   final _destinationController = TextEditingController();
+  final _originController = TextEditingController();
 
   @override
   void initState() {
@@ -31,11 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
     //Listen for selected Location
     locationSubscription =
         applicationBloc.selectedLocation!.stream.listen((Place? place) {
-      if (place != null) {
-        _destinationController.text = place.name ?? '';
-        // _goToPlace(place);
-      } else
-        _destinationController.text = "";
+      // if (place != null) {
+      // _destinationController.text = place.name ?? '';
+      // _goToPlace(place);
+      // } else
+      // _destinationController.text = "";
     });
     super.initState();
   }
@@ -46,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Provider.of<ApplicationBloc>(context, listen: false);
     applicationBloc.dispose();
     _destinationController.dispose();
+    _originController.dispose();
     locationSubscription!.cancel();
     boundsSubscription!.cancel();
     super.dispose();
@@ -65,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final applicationBloc = Provider.of<ApplicationBloc>(context);
+    final locationBloc = Provider.of<LocationData>(context);
+
     return Scaffold(
       drawer: AppDrawer(),
       drawerEnableOpenDragGesture: false,
@@ -73,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             height: double.infinity,
             width: double.infinity,
-            child: MyMap(),
+            child: myMap,
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(15, 30, 0, 0),
@@ -137,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               Container(
                                 color: Colors.white,
-                                height: 156,
+                                height: 170,
                                 padding: EdgeInsets.only(top: 6, bottom: 20),
                                 width: MediaQuery.of(context).size.width,
                                 child: Row(
@@ -238,16 +245,45 @@ class _HomeScreenState extends State<HomeScreen> {
                                                             SizedBox(
                                                               height: 8,
                                                             ),
-                                                            Text(
-                                                              "Current Location",
-                                                              style: TextStyle(
-                                                                fontFamily:
-                                                                    'Lato',
-                                                                fontSize: 17,
-                                                                color: Color(
-                                                                    0xff242e42),
+                                                            Container(
+                                                              // height: 40,
+                                                              padding: EdgeInsets
+                                                                  .only(
+                                                                      right:
+                                                                          100),
+                                                              child: TextField(
+                                                                maxLines: 1,
+                                                                controller:
+                                                                    _originController,
+                                                                textCapitalization:
+                                                                    TextCapitalization
+                                                                        .words,
+                                                                decoration:
+                                                                    InputDecoration(
+                                                                  hintText:
+                                                                      'Pick up location',
+                                                                  // suffixIcon:
+                                                                  //     Icon(Icons
+                                                                  //         .search),
+                                                                ),
+                                                                onChanged: (value) =>
+                                                                    applicationBloc
+                                                                        .searchPlaces(
+                                                                            value,
+                                                                            'pickup'),
+                                                                // onTap: () => applicationBloc.clearSelectedLocation(),
                                                               ),
                                                             ),
+                                                            // Text(
+                                                            //   "Pick up location",
+                                                            //   style: TextStyle(
+                                                            //     fontFamily:
+                                                            //         'Lato',
+                                                            //     fontSize: 17,
+                                                            //     color: Color(
+                                                            //         0xff242e42),
+                                                            //   ),
+                                                            // ),
                                                           ],
                                                         ),
                                                       ),
@@ -288,9 +324,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                           .size
                                                                           .width -
                                                                       170,
-                                                                  height: 30,
+                                                                  // height: 40,
                                                                   child:
                                                                       TextField(
+                                                                    maxLines: 1,
                                                                     controller:
                                                                         _destinationController,
                                                                     textCapitalization:
@@ -299,14 +336,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                                                     decoration:
                                                                         InputDecoration(
                                                                       hintText:
-                                                                          'Search by City',
-                                                                      suffixIcon:
-                                                                          Icon(Icons
-                                                                              .search),
+                                                                          'Drop off location',
+                                                                      // suffixIcon:
+                                                                      //     Icon(Icons
+                                                                      //         .search),
                                                                     ),
                                                                     onChanged: (value) =>
-                                                                        applicationBloc
-                                                                            .searchPlaces(value),
+                                                                        applicationBloc.searchPlaces(
+                                                                            value,
+                                                                            'dropoff'),
                                                                     // onTap: () => applicationBloc.clearSelectedLocation(),
                                                                   ),
                                                                   // Text(
@@ -405,7 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 padding: const EdgeInsets.only(
                                     left: 25.0, top: 20, bottom: 20),
                                 child: Text(
-                                  "POPULAR LOCATIONS",
+                                  "SUGGESTED LOCATIONS",
                                   style: TextStyle(
                                     fontFamily: 'Roboto',
                                     fontSize: 13,
@@ -416,77 +454,158 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                          Expanded(
-                            child: Container(
-                              color: Colors.white,
-                              width: MediaQuery.of(context).size.width,
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                itemCount:
-                                    applicationBloc.searchResults?.length,
-                                //controller: controller,
-                                itemBuilder: (BuildContext context, index) {
-                                  return Container(
-                                    margin:
-                                        EdgeInsets.symmetric(horizontal: 20),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        bottom: BorderSide(
-                                          width: 1,
-                                          color: Color(0xffefefef),
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Padding(
-                                          padding: const EdgeInsets.all(8.0),
-                                          child: Image(
-                                            image: AssetImage(
-                                                "assets/images/red_loc.png"),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Container(
-                                            padding: EdgeInsets.only(left: 10),
-                                            child: Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Flexible(
-                                                  flex: 1,
-                                                  child: Text(
-                                                    applicationBloc
-                                                        .searchResults![index]
-                                                        .description!,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: TextStyle(
-                                                        fontFamily: 'Lato',
-                                                        fontSize: 17,
-                                                        fontWeight:
-                                                            FontWeight.w400),
-                                                  ),
-                                                ),
-                                                IconButton(
-                                                  onPressed: () {},
-                                                  icon: Icon(
-                                                    Icons.star,
-                                                    color: Colors.amber,
-                                                  ),
-                                                ),
-                                              ],
+                          (applicationBloc.searchResults == null)
+                              ? Expanded(
+                                  child: Container(
+                                  color: Colors.white,
+                                  width: MediaQuery.of(context).size.width,
+                                ))
+                              : Expanded(
+                                  child: Container(
+                                    color: Colors.white,
+                                    width: MediaQuery.of(context).size.width,
+                                    child: ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      itemCount:
+                                          applicationBloc.searchResults?.length,
+                                      //controller: controller,
+                                      itemBuilder:
+                                          (BuildContext context, index) {
+                                        return Container(
+                                          margin: EdgeInsets.symmetric(
+                                              horizontal: 20),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              bottom: BorderSide(
+                                                width: 1,
+                                                color: Color(0xffefefef),
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                          child: Row(
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8.0),
+                                                child: Image(
+                                                  image: AssetImage(
+                                                      "assets/images/red_loc.png"),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    FocusScope.of(context)
+                                                        .unfocus();
+                                                    applicationBloc
+                                                        .placesService
+                                                        .getPlace(
+                                                            applicationBloc
+                                                                .searchResults![
+                                                                    index]
+                                                                .placeId!)
+                                                        .then((place) {
+                                                      print(
+                                                          '${place.name} + ${place.geometry!.location!.lat} + ${place.geometry!.location!.lng} + ${applicationBloc.pickupDropoff}');
+                                                      if (applicationBloc
+                                                              .pickupDropoff ==
+                                                          'pickup') {
+                                                        setState(() {
+                                                          _originController
+                                                                  .text =
+                                                              locationBloc
+                                                                  .startAddress;
+                                                        });
+                                                      } else if (applicationBloc
+                                                              .pickupDropoff ==
+                                                          'dropoff') {
+                                                        setState(() {
+                                                          _destinationController
+                                                                  .text =
+                                                              locationBloc
+                                                                  .destinationAddress;
+                                                        });
+                                                      }
+
+                                                      locationBloc
+                                                          .updateLocation(
+                                                              applicationBloc
+                                                                  .pickupDropoff,
+                                                              LatLng(
+                                                                  place
+                                                                      .geometry!
+                                                                      .location!
+                                                                      .lat!,
+                                                                  place
+                                                                      .geometry!
+                                                                      .location!
+                                                                      .lng!),
+                                                              place.name!);
+                                                      myMap.setMarkerAndGetAddress(
+                                                          LatLng(
+                                                              place
+                                                                  .geometry!
+                                                                  .location!
+                                                                  .lat!,
+                                                              place
+                                                                  .geometry!
+                                                                  .location!
+                                                                  .lng!),
+                                                          applicationBloc
+                                                                      .pickupDropoff ==
+                                                                  'dropoff'
+                                                              ? locationBloc
+                                                                  .destinationMarker
+                                                              : locationBloc
+                                                                  .startMarker);
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    padding: EdgeInsets.only(
+                                                        left: 10),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Flexible(
+                                                          flex: 1,
+                                                          child: Text(
+                                                            applicationBloc
+                                                                .searchResults![
+                                                                    index]
+                                                                .description!,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: TextStyle(
+                                                                fontFamily:
+                                                                    'Lato',
+                                                                fontSize: 17,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w400),
+                                                          ),
+                                                        ),
+                                                        IconButton(
+                                                          onPressed: () {},
+                                                          icon: Icon(
+                                                            Icons.star,
+                                                            color: Colors.amber,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
                                     ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
+                                  ),
+                                ),
                         ],
                       ),
                     ),

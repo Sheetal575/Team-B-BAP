@@ -72,7 +72,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         hintText: 'Search by City',
                         suffixIcon: Icon(Icons.search),
                       ),
-                      onChanged: (value) => applicationBloc.searchPlaces(value),
+                      onChanged: (value) =>
+                          applicationBloc.searchPlaces(value, ''),
                       // onTap: () => applicationBloc.clearSelectedLocation(),
                     ),
                   ),

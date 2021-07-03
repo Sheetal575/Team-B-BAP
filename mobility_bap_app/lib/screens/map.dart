@@ -2,30 +2,27 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mobility_bap_app/search/search_bloc.dart';
+import 'package:mobility_bap_app/services/location_providers.dart';
+import 'package:provider/provider.dart';
 
-class MyMap extends StatefulWidget {
-  const MyMap({Key? key}) : super(key: key);
-
-  @override
-  _MyMapState createState() => _MyMapState();
-}
-
-class _MyMapState extends State<MyMap> {
+class MyMap extends StatelessWidget {
   late GoogleMapController mapController;
   late CameraPosition _initialLocation = CameraPosition(target: LatLng(0, 0));
   // static const LatLng _center = const LatLng(45.521345, -122.687);
   // LatLng _lastMapPosition = _center;
   late Position _currentPosition;
-  String _currentAddress = '';
+  // String _currentAddress = '';
 
-  final startAddressController = TextEditingController();
-  final destinationAddressController = TextEditingController();
+  // final startAddressController = TextEditingController();
+  // final destinationAddressController = TextEditingController();
 
-  final startAddressFocusNode = FocusNode();
-  final desrinationAddressFocusNode = FocusNode();
+  // final startAddressFocusNode = FocusNode();
+  // final desrinationAddressFocusNode = FocusNode();
+  late LocationData locationBloc;
 
-  String _startAddress = '';
-  String _destinationAddress = '';
+  // String _startAddress = '';
+  // String _destinationAddress = '';
   // String? _placeDistance;
 // List of coordinates to join
   List<LatLng> polylineCoordinates = [];
@@ -35,28 +32,28 @@ class _MyMapState extends State<MyMap> {
   Set<Marker> markers = {};
 
   //Positions for storing start and destination
-  late LatLng _startPosition;
-  late LatLng _destinationPosition;
+  // late LatLng _startPosition;
+  // late LatLng _destinationPosition;
 
-  // Start Location Marker
-  Marker startMarker = Marker(
-    markerId: MarkerId('startMarker'),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
-  );
+  // // Start Location Marker
+  // Marker startMarker = Marker(
+  //   markerId: MarkerId('startMarker'),
+  //   icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueCyan),
+  // );
 
-  // Destination Location Marker
-  Marker destinationMarker = Marker(
-    markerId: MarkerId('destinationMarker'),
-    icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-  );
+  // // Destination Location Marker
+  // Marker destinationMarker = Marker(
+  //   markerId: MarkerId('destinationMarker'),
+  //   icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+  // );
 
   // Method for retrieving the current location
   _getCurrentLocation() async {
     await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high)
         .then((Position position) async {
       _currentPosition = position;
-      setMarkerAndGetAddress(
-          LatLng(position.latitude, position.longitude), startMarker);
+      setMarkerAndGetAddress(LatLng(position.latitude, position.longitude),
+          locationBloc.startMarker);
     }).catchError((e) {
       print(e);
     });
@@ -64,15 +61,7 @@ class _MyMapState extends State<MyMap> {
 
   //Once a marker position is modified, the address and latLng values are updated
   updateLocation(String _markerId, LatLng _latLng, String _address) {
-    setState(() {
-      if (_markerId == 'startMarker') {
-        _startPosition = _latLng;
-        _startAddress = _address;
-      } else if (_markerId == 'destinationMarker') {
-        _destinationAddress = _address;
-        _destinationPosition = _latLng;
-      }
-    });
+    locationBloc.updateLocation(_markerId, _latLng, _address);
   }
 
   setMarkerAndGetAddress(LatLng _latLng, Marker marker) {
@@ -99,18 +88,18 @@ class _MyMapState extends State<MyMap> {
             updateLocation(marker.markerId.value, _newPosition, _address);
           });
         }));
-    setState(() {
-      _getAddress(LatLng(_latLng.latitude, _latLng.longitude)).then((_address) {
-        print(_address);
-        updateLocation(marker.markerId.value,
-            LatLng(_latLng.latitude, _latLng.longitude), _address);
-      });
+    // setState(() {
+    _getAddress(LatLng(_latLng.latitude, _latLng.longitude)).then((_address) {
+      print(_address);
+      updateLocation(marker.markerId.value,
+          LatLng(_latLng.latitude, _latLng.longitude), _address);
+      // });
       markers.add(marker);
       mapController.animateCamera(
         CameraUpdate.newCameraPosition(
           CameraPosition(
             target: LatLng(_latLng.latitude, _latLng.longitude),
-            zoom: 18.0,
+            zoom: 16.0,
           ),
         ),
       );
@@ -130,64 +119,61 @@ class _MyMapState extends State<MyMap> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  //text field widget
-  Widget _textField({
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required String label,
-    required String hint,
-    required double width,
-    required Icon prefixIcon,
-    Widget? suffixIcon,
-    required Function(String) locationCallback,
-  }) {
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      child: TextField(
-        onChanged: (value) {
-          locationCallback(value);
-        },
-        controller: controller,
-        focusNode: focusNode,
-        decoration: new InputDecoration(
-          prefixIcon: prefixIcon,
-          suffixIcon: suffixIcon,
-          labelText: label,
-          filled: true,
-          fillColor: Colors.white,
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(10.0),
-            ),
-            borderSide: BorderSide(
-              color: Colors.grey.shade400,
-              width: 2,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(10.0),
-            ),
-            borderSide: BorderSide(
-              color: Colors.blue.shade300,
-              width: 2,
-            ),
-          ),
-          contentPadding: EdgeInsets.all(15),
-          hintText: hint,
-        ),
-      ),
-    );
-  }
+  // //text field widget
+  // Widget _textField({
+  //   required TextEditingController controller,
+  //   required FocusNode focusNode,
+  //   required String label,
+  //   required String hint,
+  //   required double width,
+  //   required Icon prefixIcon,
+  //   Widget? suffixIcon,
+  //   required Function(String) locationCallback,
+  // }) {
+  //   return Container(
+  //     width: MediaQuery.of(context).size.width,
+  //     child: TextField(
+  //       onChanged: (value) {
+  //         locationCallback(value);
+  //       },
+  //       controller: controller,
+  //       focusNode: focusNode,
+  //       decoration: new InputDecoration(
+  //         prefixIcon: prefixIcon,
+  //         suffixIcon: suffixIcon,
+  //         labelText: label,
+  //         filled: true,
+  //         fillColor: Colors.white,
+  //         enabledBorder: OutlineInputBorder(
+  //           borderRadius: BorderRadius.all(
+  //             Radius.circular(10.0),
+  //           ),
+  //           borderSide: BorderSide(
+  //             color: Colors.grey.shade400,
+  //             width: 2,
+  //           ),
+  //         ),
+  //         focusedBorder: OutlineInputBorder(
+  //           borderRadius: BorderRadius.all(
+  //             Radius.circular(10.0),
+  //           ),
+  //           borderSide: BorderSide(
+  //             color: Colors.blue.shade300,
+  //             width: 2,
+  //           ),
+  //         ),
+  //         contentPadding: EdgeInsets.all(15),
+  //         hintText: hint,
+  //       ),
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
-    print('start: $_startAddress dropoff: $_destinationAddress');
+    locationBloc = Provider.of<LocationData>(context);
+
+    // print('start: $_startAddress dropoff: $_destinationAddress');
     var height = MediaQuery.of(context).size.height;
     var width = MediaQuery.of(context).size.width;
     return Container(
@@ -200,9 +186,9 @@ class _MyMapState extends State<MyMap> {
             // Map View
 
             GoogleMap(
-              onLongPress: (_latLng) {
-                setMarkerAndGetAddress(_latLng, destinationMarker);
-              },
+              // onLongPress: (_latLng) {
+              //   setMarkerAndGetAddress(_latLng, destinationMarker);
+              // },
               markers: Set<Marker>.from(markers),
               initialCameraPosition: _initialLocation,
               myLocationEnabled: false,
